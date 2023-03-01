@@ -1,22 +1,23 @@
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
 
-val kotlinVersion = "1.6.0"
-val serializationVersion = "1.3.1"
-val ktorVersion = "1.6.7"
-val logbackVersion = "1.2.3"
-val reactVersion = "17.0.2-pre.279-kotlin-1.6.0"
-val styledVersion = "5.3.3-pre.279-kotlin-1.6.0"
+val kotlinVersion = "1.8.10"
+val serializationVersion = "1.4.1"
+val ktorVersion = "2.2.3"
+val kotlinWrappersVersion = "1.0.0-pre.354"
+val logbackVersion = "1.4.5"
+val reactVersion = "18.2.0-pre.502"
+val styledVersion = "5.3.6-pre.502"
 
 
 plugins {
     // Kotlin Multiplatform
-    kotlin("multiplatform") version "1.6.0"
+    kotlin("multiplatform") version "1.8.10"
 
     // To run JVM part
     application
 
     // Multiplatform conversions between Kotlin objects and their JSON text representation
-    kotlin("plugin.serialization") version "1.6.0"
+    kotlin("plugin.serialization") version "1.8.10"
 }
 
 group = "org.example"
@@ -45,6 +46,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
+                implementation("io.ktor:ktor-client-core:$ktorVersion")
             }
         }
         val commonTest by getting {
@@ -57,7 +59,12 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation("io.ktor:ktor-serialization:$ktorVersion")
-                implementation("io.ktor:ktor-server-core:$ktorVersion")
+                implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+                implementation("io.ktor:ktor-server-cors:$ktorVersion")
+                implementation("io.ktor:ktor-server-compression:$ktorVersion")
+                implementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
+
                 implementation("io.ktor:ktor-server-netty:$ktorVersion")
                 implementation("ch.qos.logback:logback-classic:$logbackVersion")
             }
@@ -65,9 +72,14 @@ kotlin {
 
         val jsMain by getting {
             dependencies {
+                // Generic Client
+                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+
+                // ReactJS
                 implementation("io.ktor:ktor-client-js:$ktorVersion")
                 implementation("io.ktor:ktor-client-json:$ktorVersion")
-                implementation("io.ktor:ktor-client-serialization:$ktorVersion")
+                implementation(enforcedPlatform("org.jetbrains.kotlin-wrappers:kotlin-wrappers-bom:$kotlinWrappersVersion"))
 
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-react:$reactVersion")
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom:$reactVersion")
@@ -104,7 +116,7 @@ tasks.getByName<JavaExec>("run") {
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions {
-            jvmTarget = "1.8"
+            jvmTarget = "11"
         }
     }
 }

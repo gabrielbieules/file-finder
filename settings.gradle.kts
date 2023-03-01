@@ -4,5 +4,5 @@ pluginManagement {
         maven { setUrl("https://plugins.gradle.org/m2/") }
     }
 }
-rootProject.name = "test-data-finder"
+rootProject.name = "file-finder"
 

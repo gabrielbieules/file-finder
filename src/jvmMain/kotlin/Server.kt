@@ -1,20 +1,22 @@
-import io.ktor.application.*
-import io.ktor.features.*
 import io.ktor.http.*
-import io.ktor.http.content.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.serialization.*
+import io.ktor.server.application.*
 import io.ktor.server.engine.*
+import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.compression.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import io.ktor.serialization.kotlinx.json.*
 import org.slf4j.Logger
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import kotlinx.serialization.encodeToString as myJsonEncode
 import kotlinx.serialization.decodeFromString as myJsonDecode
+import kotlinx.serialization.encodeToString as myJsonEncode
 
 
 val locations = HashSet<Location>()
@@ -27,13 +29,15 @@ private const val LOCAL_SNAPSHOT_FILE = "./localSnapshotFile.save"
 
 fun main() {
     embeddedServer(Netty, 9090) {
+        var serverLog = log
+
         install(ContentNegotiation) {
             json()
         }
         install(CORS) {
-            method(HttpMethod.Get)
-            method(HttpMethod.Post)
-            method(HttpMethod.Delete)
+            allowMethod(HttpMethod.Get)
+            allowMethod(HttpMethod.Post)
+            allowMethod(HttpMethod.Delete)
             anyHost()
         }
         install(Compression) {
@@ -50,7 +54,7 @@ fun main() {
             route(Evidence.path) {
                 get {
                     if (evidencesCache.isEmpty()) {
-                        refreshEvidencesCache(log)
+                        refreshEvidencesCache(serverLog)
                     }
                     val search = call.parameters["search"] ?: ""
                     val minSize = call.parameters["minSize"]?.toLong()
@@ -121,7 +125,7 @@ fun main() {
 
                 post {
                     launch {
-                        refreshEvidencesCache(log)
+                        refreshEvidencesCache(serverLog)
                     }
                     call.respond(HttpStatusCode.OK)
                 }
@@ -135,7 +139,7 @@ fun main() {
                     val newLocation = call.receive<Location>()
                     if (locations.add(newLocation)) {
                         launch {
-                            evidencesCache[newLocation.id] = scanLocation(newLocation, log)
+                            evidencesCache[newLocation.id] = scanLocation(newLocation, serverLog)
                             serviceStatus.filesNumber = evidencesCache.values.flatten().size
                         }
                     }
@@ -152,14 +156,14 @@ fun main() {
             }
 
             post("/snapshot/save") {
-                log.info("Saving locations & evidences on local storage...")
+                serverLog.info("Saving locations & evidences on local storage...")
 
                 val json = Json.myJsonEncode(Cache(evidencesCache.toMap(), locations, serviceStatus))
 
                 val file = File(LOCAL_SNAPSHOT_FILE)
                 file.writeText(json)
 
-                log.info("Successfully saved locations & evidences on local storage: {}", file.absolutePath)
+                serverLog.info("Successfully saved locations & evidences on local storage: {}", file.absolutePath)
                 call.respond(HttpStatusCode.OK)
             }
 
@@ -175,8 +179,10 @@ fun main() {
                 serviceStatus.lastScanned = cache.serviceStatus.lastScanned
                 serviceStatus.filesNumber = evidencesCache.values.flatten().size
 
-                log.info("Successfully loaded {} locations & {} evidences from local storage.",
-                    locations.size, serviceStatus.filesNumber)
+                serverLog.info(
+                    "Successfully loaded {} locations & {} evidences from local storage.",
+                    locations.size, serviceStatus.filesNumber
+                )
 
                 call.respond(HttpStatusCode.OK)
             }

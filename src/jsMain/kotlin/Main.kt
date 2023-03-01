@@ -1,8 +1,8 @@
-import react.dom.render
 import kotlinx.browser.document
+import react.create
+import react.dom.client.createRoot
 
 fun main() {
-    render(document.getElementById("root")!!) {
-        child(app)
-    }
+    val container = document.getElementById("root") ?: error("Couldn't find root container!")
+    createRoot(container).render(app.create())
 }

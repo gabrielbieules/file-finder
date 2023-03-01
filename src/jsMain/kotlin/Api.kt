@@ -1,18 +1,24 @@
 import io.ktor.client.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.js.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.browser.window
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.Json
 
-val endpoint = window.location.origin // only needed until https://youtrack.jetbrains.com/issue/KTOR-453 is resolved
 
-val jsonClient = HttpClient {
-    install(JsonFeature) { serializer = KotlinxSerializer() }
+val jsonClient = HttpClient(Js) {
+    install(ContentNegotiation) {
+        json(Json {
+            prettyPrint = true
+            isLenient = true
+        })
+    }
 }
 
 suspend fun getServiceStatus(): ServiceStatus {
-    return jsonClient.get(endpoint + ServiceStatus.path)
+    return jsonClient.get(ServiceStatus.path).body()
 }
 
 suspend fun searchEvidences(search: String, minSize: String?, maxSize: String?, pageIndex: Int?, pageSize: Int?): SearchResult {
@@ -29,39 +35,39 @@ suspend fun searchEvidences(search: String, minSize: String?, maxSize: String?, 
     if (pageSize != null) {
         query += "&pageSize=$pageSize"
     }
-    return jsonClient.get(endpoint + Evidence.path + query)
+    return jsonClient.get(Evidence.path + query).body()
 }
 
 suspend fun refreshEvidences() {
-    jsonClient.post<Unit>(endpoint + Evidence.path)
+    jsonClient.post(Evidence.path)
 }
 
 suspend fun saveSnapshot() {
-    jsonClient.post<Unit>("$endpoint/snapshot/save")
+    jsonClient.post("/snapshot/save")
 }
 suspend fun loadSnapshot() {
-    jsonClient.post<Unit>("$endpoint/snapshot/load")
+    jsonClient.post("/snapshot/load")
 }
 
 suspend fun addTag(evidence: Evidence, tag: String) {
-    jsonClient.post<Unit>(endpoint + Evidence.path + "/${evidence.id}/tag/$tag")
+    jsonClient.post(Evidence.path + "/${evidence.id}/tag/$tag")
 }
 
 suspend fun deleteTag(evidence: Evidence, tag: String) {
-    jsonClient.delete<Unit>(endpoint + Evidence.path + "/${evidence.id}/tag/$tag")
+    jsonClient.delete(Evidence.path + "/${evidence.id}/tag/$tag")
 }
 
 suspend fun getLocations(): List<Location> {
-    return jsonClient.get(endpoint + Location.path)
+    return jsonClient.get(Location.path).body()
 }
 
 suspend fun addLocation(location: Location) {
-    jsonClient.post<Unit>(endpoint + Location.path) {
+    jsonClient.post(Location.path) {
         contentType(ContentType.Application.Json)
-        body = location
+        setBody(location)
     }
 }
 
 suspend fun deleteLocation(location: Location) {
-    jsonClient.delete<Unit>(endpoint + Location.path + "/${location.id}")
+    jsonClient.delete(Location.path + "/${location.id}")
 }

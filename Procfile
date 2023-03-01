@@ -1,1 +1,1 @@
-web: ./build/install/test-data-finder/bin/test-data-finder
+web: ./build/install/file-finder/bin/file-finder
